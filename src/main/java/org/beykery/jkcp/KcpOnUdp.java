@@ -5,6 +5,7 @@ package org.beykery.jkcp;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
+
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
@@ -156,9 +157,6 @@ public class KcpOnUdp
 
     /**
      * update one kcp
-     *
-     * @param addr
-     * @param kcp
      */
     void update()
     {
@@ -170,10 +168,8 @@ public class KcpOnUdp
             dp.release();
             if (errcode != 0)
             {
-                this.closed = true;
-                this.release();
                 this.listerner.handleException(new IllegalStateException("input error : " + errcode), this);
-                this.listerner.handleClose(this);
+                close();
                 return;
             }
         }
@@ -198,10 +194,8 @@ public class KcpOnUdp
             errcode = this.kcp.send(bb);
             if (errcode != 0)
             {
-                this.closed = true;
-                this.release();
                 this.listerner.handleException(new IllegalStateException("send error : " + errcode), this);
-                this.listerner.handleClose(this);
+                close();
                 return;
             }
         }
@@ -220,10 +214,14 @@ public class KcpOnUdp
         //check timeout
         if (this.timeout > 0 && lastTime > 0 && System.currentTimeMillis() - lastTime > this.timeout)
         {
-            this.closed = true;
-            this.release();
-            this.listerner.handleClose(this);
+            close();
         }
+    }
+
+    public void close() {
+        this.closed = true;
+        this.release();
+        this.listerner.handleClose(this);
     }
 
     /**
@@ -395,10 +393,12 @@ public class KcpOnUdp
         {
             item.release();
         }
+        received.clear();
         for (ByteBuf item : this.sendList)
         {
             item.release();
         }
+        sendList.clear();
     }
 
 }

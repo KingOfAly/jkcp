@@ -5,8 +5,10 @@ package org.beykery.jkcp;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.socket.DatagramPacket;
+
 import java.net.InetSocketAddress;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -143,20 +145,19 @@ public class KcpThread extends Thread
         ku.input(content);
       }
       //update
-      KcpOnUdp temp = null;
-      for (KcpOnUdp ku : this.kcps.values())
+      Iterator<KcpOnUdp> iterator = this.kcps.values().iterator();
+      while (iterator.hasNext())
       {
+        KcpOnUdp ku = iterator.next();
         if (ku.isClosed())
         {
-          temp = ku;
+          //删掉过时的kcp
+          iterator.remove();
+          ku.release();
         } else
         {
           ku.update();
         }
-      }
-      if (temp != null)//删掉过时的kcp
-      {
-        this.kcps.remove((InetSocketAddress) temp.getKcp().getUser());
       }
       if (inputs.isEmpty())//如果输入为空则考虑wait
       {
@@ -168,7 +169,7 @@ public class KcpThread extends Thread
             try
             {
               lock.wait(interval - end + st);
-            } catch (InterruptedException e)
+            } catch (InterruptedException ignored)
             {
             }
           }
